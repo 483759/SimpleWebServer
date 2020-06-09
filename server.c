@@ -25,7 +25,7 @@ void saveLogfile(char* cli_ip, char* file, int size);
 
 int main(int argc, char *argv[]){
 	int n,port_num;
-	char* dir, buffer[BUFSIZE];
+	char* dir, *cur, buffer[BUFSIZE];
 	pthread_t tid[THREADSIZE], recv;
 	struct sockaddr_in cli, sin;
 	FILE* log_fp;
@@ -38,7 +38,13 @@ int main(int argc, char *argv[]){
 	}
 	
 	dir = (char*)malloc(sizeof(char)*strlen(argv[1]));
-	strcpy(dir,argv[1]);
+	dir = getcwd(NULL, BUFSIZ);
+	int i;
+	for(i=0;argv[1][i+1]!='\0';i++)
+		argv[1][i]=argv[1][i+1];
+	argv[1][i]='\0';
+	chdir(argv[1]);
+	dir = getcwd(NULL, BUFSIZE);
 	port_num = atoi(argv[2]);
 	//save server directory and port num
 

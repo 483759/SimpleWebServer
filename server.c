@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/un.h>
+#include <sys/wait.h>
 #include <pthread.h>
 #include <unistd.h>
 #include <netinet/in.h>
@@ -14,16 +15,20 @@
 #define THREADSIZE  10
 
 int *ns[THREADSIZE], t_size;
+int sd;
 pthread_mutex_t m_lock;
 
+void keycontrol(int sig);
 void *recvGetRequest(void *arg);
+void getClientInfo(char* file, char* cli_ip, int* port_num);
+void saveLogfile(char* cli_ip, char* file, int size);
 
 int main(int argc, char *argv[]){
-	int n,port_num, sd;
+	int n,port_num;
 	char* dir, buffer[BUFSIZE];
-	FILE *serfp;
 	pthread_t tid[THREADSIZE], recv;
 	struct sockaddr_in cli, sin;
+	FILE* log_fp;
 	int clientlen=sizeof(cli);
 
 	if(argc<3){
@@ -31,14 +36,16 @@ int main(int argc, char *argv[]){
 		printf("No sufficient argument\n");
 		exit(1);
 	}
-
-	serfp = fopen("log.txt","w");
-	//open server log file
 	
 	dir = (char*)malloc(sizeof(char)*strlen(argv[1]));
 	strcpy(dir,argv[1]);
 	port_num = atoi(argv[2]);
 	//save server directory and port num
+
+	log_fp = fopen("log.txt", "w");
+	if(log_fp==NULL)
+		perror("log_fp");
+	fclose(log_fp);
 
 	printf("server directory = %s\nPort num = %d\n",dir,port_num);
 	
@@ -47,6 +54,7 @@ int main(int argc, char *argv[]){
 		exit(1);
 	}
 	memset((char*)&sin, '\0', sizeof(sin));
+	signal(SIGINT, keycontrol);
 
 	sin.sin_family=AF_INET;
 	sin.sin_port=htons(port_num);
@@ -88,14 +96,27 @@ int main(int argc, char *argv[]){
 	for(int i=0;i<t_size;i++)
 		close(*ns[t_size]);
 	close(sd);
-	fclose(serfp);
+	fclose(log_fp);
 	return 0;
+}
+
+void keycontrol(int sig){
+	if(sig==SIGINT){
+		printf("Shutdown Server\n");
+		for(int i=0;i<t_size;i++)
+			close(*ns[t_size]);
+		close(sd);
+		exit(1);
+	}
+
 }
 
 void *recvGetRequest(void *arg){
 	int *sock = (int*)arg;
 	char buffer[BUFSIZE];
-	int str_len = 0;
+	char HTTP[11][BUFSIZE];
+	char cli_ip[20];
+	int str_len = 0,index=0, port_num=0;
 
 	while(str_len>=0){
 		if((str_len=recv(*sock, buffer, BUFSIZE, 0))==-1){
@@ -105,6 +126,53 @@ void *recvGetRequest(void *arg){
 		}
 
 		buffer[str_len]='\0';
+
+		getClientInfo(buffer, cli_ip, &port_num);
 		fputs(buffer, stdout);
 	}
 }
+
+void getClientInfo(char* file, char* cli_ip, int* port_num){
+	char HTTP[11][BUFSIZE];
+	int index=0,j=0;
+	
+	char* ptr = strtok(file, "\n");
+	while(ptr != NULL){
+		if(index>7)break;
+		printf("%d : ",index);
+		strcpy(HTTP[index],ptr);
+		printf("%s\n", HTTP[index]);
+			
+		ptr=strtok(NULL,"\n");
+		index++;
+	}
+
+	char* p = strtok(HTTP[1]," :");
+	while(p != NULL){
+		if(j>2)break;
+		if(j==1)strcpy(cli_ip,p);
+		else if(j==2)*port_num=atoi(p);
+		p=strtok(NULL," :");
+		j++;
+	}
+
+	saveLogfile(cli_ip, "index.html", 0);
+	printf("client ip is : %s, port number is :%d\n",cli_ip, *port_num);
+	
+}
+
+void saveLogfile(char* cli_ip, char* file, int size){
+	FILE* log_fp = fopen("log.txt", "a");
+
+	if(log_fp==NULL){
+		perror("log_fp");
+		return;
+	}
+
+	fprintf(log_fp, "%s %s %d\n",cli_ip, file, size);
+
+	fclose(log_fp);
+	return;
+}
+
+

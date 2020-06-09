@@ -21,6 +21,7 @@ pthread_mutex_t m_lock;
 void keycontrol(int sig);
 void *recvGetRequest(void *arg);
 void getClientInfo(char* file, char* cli_ip, int* port_num);
+char* openFile(char* file);
 void saveLogfile(char* cli_ip, char* file, int size);
 
 int main(int argc, char *argv[]){
@@ -108,10 +109,10 @@ int main(int argc, char *argv[]){
 
 void keycontrol(int sig){
 	if(sig==SIGINT){
-		printf("Shutdown Server\n");
 		for(int i=0;i<t_size;i++)
 			close(*ns[t_size]);
 		close(sd);
+		printf("Shutdown Server\n");
 		exit(1);
 	}
 
@@ -120,7 +121,6 @@ void keycontrol(int sig){
 void *recvGetRequest(void *arg){
 	int *sock = (int*)arg;
 	char buffer[BUFSIZE];
-	char HTTP[11][BUFSIZE];
 	char cli_ip[20];
 	int str_len = 0,index=0, port_num=0;
 
@@ -138,20 +138,44 @@ void *recvGetRequest(void *arg){
 	}
 }
 
+char* openFile(char* file){
+	FILE* fp = NULL;
+	char content[BUFSIZE];
+
+	fp = fopen(file,"r");
+	if(fp==NULL){
+		fp=fopen("index.html","r");
+		if(fp==NULL)
+			printf("Not found");
+	}
+
+	while(!feof(fp)){
+		fgets(content, BUFSIZE, fp);
+		puts(content);
+	}
+
+}
+
 void getClientInfo(char* file, char* cli_ip, int* port_num){
 	char HTTP[11][BUFSIZE];
+	char *html_file;
 	int index=0,j=0;
 	
 	char* ptr = strtok(file, "\n");
 	while(ptr != NULL){
 		if(index>7)break;
-		printf("%d : ",index);
 		strcpy(HTTP[index],ptr);
-		printf("%s\n", HTTP[index]);
+		//printf("%s\n", HTTP[index]);
 			
 		ptr=strtok(NULL,"\n");
 		index++;
 	}
+
+	char* fptr = strtok(HTTP[0], " ");
+	fptr=strtok(NULL," ");
+	fptr++;
+	printf("%s\n",fptr);
+	openFile(fptr);
 
 	char* p = strtok(HTTP[1]," :");
 	while(p != NULL){
@@ -164,7 +188,6 @@ void getClientInfo(char* file, char* cli_ip, int* port_num){
 
 	saveLogfile(cli_ip, "index.html", 0);
 	printf("client ip is : %s, port number is :%d\n",cli_ip, *port_num);
-	
 }
 
 void saveLogfile(char* cli_ip, char* file, int size){

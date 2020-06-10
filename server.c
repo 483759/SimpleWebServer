@@ -20,7 +20,8 @@ pthread_mutex_t m_lock;
 
 void keycontrol(int sig);
 void *recvGetRequest(void *arg);
-void getClientInfo(char* file, char* cli_ip, int* port_num);
+void responseHTTP(int* sock, char* file, int type);
+char* getClientInfo(char* file, char* cli_ip, int* port_num);
 char* openFile(char* file);
 void saveLogfile(char* cli_ip, char* file, int size);
 
@@ -125,6 +126,7 @@ void *recvGetRequest(void *arg){
 	int str_len = 0,index=0, port_num=0;
 
 	while(str_len>=0){
+		char* file_name=NULL;
 		if((str_len=recv(*sock, buffer, BUFSIZE, 0))==-1){
 
 			printf("No Receive");
@@ -133,14 +135,47 @@ void *recvGetRequest(void *arg){
 
 		buffer[str_len]='\0';
 
-		getClientInfo(buffer, cli_ip, &port_num);
+		file_name = getClientInfo(buffer, cli_ip, &port_num);
+		//openFile(file_name);
+		responseHTTP(sock, file_name, 0);
+		puts(file_name);
 		fputs(buffer, stdout);
 	}
+}
+
+void responseHTTP(int* sock, char* file, int type){
+	FILE* fp=NULL;
+	char content[BUFSIZE];
+	char respHeader[BUFSIZE];
+	char *dir;
+	
+	puts(file);
+	puts(getcwd(NULL,BUFSIZE));
+	fp = fopen(file, "r");
+
+	if(fp==NULL){
+		perror("fp");
+		return;
+	}
+
+	if(type==0){
+		puts(respHeader);
+		strcpy(respHeader, "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n"); 
+		puts(respHeader);
+		write(*sock, respHeader, strlen(respHeader));
+		while(fgets(content, BUFSIZE, fp)){
+			puts(content);
+			write(*sock, content, strlen(content));
+		}
+	}
+
+	fclose(fp);
 }
 
 char* openFile(char* file){
 	FILE* fp = NULL;
 	char content[BUFSIZE];
+	char buffer[BUFSIZE];
 
 	fp = fopen(file,"r");
 	if(fp==NULL){
@@ -149,14 +184,16 @@ char* openFile(char* file){
 			printf("Not found");
 	}
 
-	while(!feof(fp)){
-		fgets(content, BUFSIZE, fp);
-		puts(content);
+	if(strncmp(file,"total.cgi",9)==0){
+		//total cgi 	
 	}
 
+	
+	fclose(fp);
+	return NULL; 
 }
 
-void getClientInfo(char* file, char* cli_ip, int* port_num){
+char* getClientInfo(char* file, char* cli_ip, int* port_num){
 	char HTTP[11][BUFSIZE];
 	char *html_file;
 	int index=0,j=0;
@@ -165,7 +202,7 @@ void getClientInfo(char* file, char* cli_ip, int* port_num){
 	while(ptr != NULL){
 		if(index>7)break;
 		strcpy(HTTP[index],ptr);
-		//printf("%s\n", HTTP[index]);
+		printf("%s\n", HTTP[index]);
 			
 		ptr=strtok(NULL,"\n");
 		index++;
@@ -174,8 +211,6 @@ void getClientInfo(char* file, char* cli_ip, int* port_num){
 	char* fptr = strtok(HTTP[0], " ");
 	fptr=strtok(NULL," ");
 	fptr++;
-	printf("%s\n",fptr);
-	openFile(fptr);
 
 	char* p = strtok(HTTP[1]," :");
 	while(p != NULL){
@@ -188,6 +223,7 @@ void getClientInfo(char* file, char* cli_ip, int* port_num){
 
 	saveLogfile(cli_ip, "index.html", 0);
 	printf("client ip is : %s, port number is :%d\n",cli_ip, *port_num);
+	return fptr;
 }
 
 void saveLogfile(char* cli_ip, char* file, int size){

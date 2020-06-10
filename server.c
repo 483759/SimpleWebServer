@@ -21,7 +21,7 @@ pthread_mutex_t m_lock;
 void keycontrol(int sig);
 void *recvGetRequest(void *arg);
 void responseHTTP(int* sock, char* file, int type);
-char* getClientInfo(char* file, char* cli_ip, int* port_num);
+char* getClientInfo(char* file, char* cli_ip, int* port_num, int* type);
 char* openFile(char* file, int* type);
 void saveLogfile(char* cli_ip, char* file, int size);
 
@@ -55,7 +55,7 @@ int main(int argc, char *argv[]){
 		perror("log_fp");
 	fclose(log_fp);
 
-	printf("server directory = %s\nPort num = %d\n",dir,port_num);
+	printf("server directory = %s\nPort num = %d\n\n",dir,port_num);
 	
 	if((sd = socket(AF_INET, SOCK_STREAM, 0))==-1){
 		perror("socket");
@@ -136,11 +136,10 @@ void *recvGetRequest(void *arg){
 
 		buffer[str_len]='\0';
 
-		file_name = getClientInfo(buffer, cli_ip, &port_num);
+		file_name = getClientInfo(buffer, cli_ip, &port_num, &type);
 		openFile(file_name, &type);
 		responseHTTP(sock, file_name, type);
 		puts(file_name);
-		fputs(buffer, stdout);
 	}
 }
 
@@ -150,12 +149,41 @@ void responseHTTP(int* sock, char* file, int type){
 	char respHeader[BUFSIZE];
 	char *dir;
 	
-	puts(file);
-	puts(getcwd(NULL,BUFSIZE));
+	if(type==2){
+		char *p = strtok(file, "?=&");
+		char buffer[BUFSIZE];
+		int sum=0, s=0, f=0;
+		while(p!=NULL){
+			if(strcmp(p,"from")==0){
+				p=strtok(NULL, "?=&");
+				s=atoi(p);
+			}else if(strcmp(p, "to")==0){
+				p=strtok(NULL, "?=&");
+				f=atoi(p);
+			}
+			p=strtok(NULL, "?=&");
+		}
+		for(int i=s;i<=f;i++)
+			sum+=i;
+
+		sprintf(buffer, "<body>sum of %d to %d = %d</body>\r\n", s, f, sum);
+
+		strcpy(respHeader, "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n"); 
+		puts(respHeader);
+		write(*sock, respHeader, strlen(respHeader));
+		
+		puts(buffer);
+		write(*sock, buffer, strlen(buffer));
+		return;
+	}
+
+	//puts(file);
+	//puts(getcwd(NULL,BUFSIZE));
 	fp = fopen(file, "r");
 
 	if(fp==NULL){
 		perror("fp");
+		printf("%s\n", file);
 		return;
 	}
 printf("type: %d\n",type);
@@ -165,7 +193,7 @@ printf("type: %d\n",type);
 	}
 	else if(type==0){	//if file is .html
 		puts(respHeader);
-		strcpy(respHeader, "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Security-Policy: default-src https:\r\n"); 
+		strcpy(respHeader, "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n"); 
 		puts(respHeader);
 		write(*sock, respHeader, strlen(respHeader));
 		while(fgets(content, BUFSIZE, fp)){
@@ -174,12 +202,16 @@ printf("type: %d\n",type);
 		}
 	}
 	else if(type==1){
-		strcpy(respHeader, "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n"); 
+		strcpy(respHeader, "HTTP/1.1 200 OK\r\nContent-Type: image/webp; charset=utf-8\r\n"); 
 		puts(respHeader);
 		write(*sock, respHeader, strlen(respHeader));
+		while(fgets(content, BUFSIZE, fp)){
+			//puts(content);
+			write(*sock, content, strlen(content));
+		}
+
 
 	}
-
 	fclose(fp);
 }
 
@@ -187,6 +219,14 @@ char* openFile(char* file, int* type){
 	FILE* fp = NULL;
 	char content[BUFSIZE];
 	char buffer[BUFSIZE];
+	
+	if(strncmp(file,"total.cgi",9)==0){
+		//total cgi 	
+		//printf("total");
+		*type=2;
+		return NULL;
+	}
+
 
 	fp = fopen(file,"r");
 	if(fp==NULL){
@@ -205,16 +245,14 @@ char* openFile(char* file, int* type){
 			*type=1;
 	}
 
-	if(strncmp(file,"total.cgi",9)==0){
-		//total cgi 	
-	}
+	
 
 	
 	fclose(fp);
 	return NULL; 
 }
 
-char* getClientInfo(char* file, char* cli_ip, int* port_num){
+char* getClientInfo(char* file, char* cli_ip, int* port_num, int* type){
 	char HTTP[11][BUFSIZE];
 	char *html_file;
 	int index=0,j=0;
@@ -242,8 +280,20 @@ char* getClientInfo(char* file, char* cli_ip, int* port_num){
 		j++;
 	}
 
+	p = strtok(HTTP[3], " :,");
+	p = strtok(NULL, " :,");
+	//printf("Accept: %s\n", p);
+	if(strcmp(p, "image/webp")==0){
+		printf("This is image\n\n");
+		*type = 1;
+	}
+	else if(strcmp(p, "text/html")==0){
+		printf("This is page\n\n");
+		*type = 0;
+	}
+
 	saveLogfile(cli_ip, "index.html", 0);
-	printf("client ip is : %s, port number is :%d\n\n",cli_ip, *port_num);
+	//printf("client ip is : %s, port number is :%d\n\n",cli_ip, *port_num);
 	return fptr;
 }
 

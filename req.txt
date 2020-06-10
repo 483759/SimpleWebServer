@@ -1,10 +1,108 @@
-server directory = /html
+server directory = /home/ijin/web/SimpleWebServer/html
 Port num = 8080
-0 : GET /html HTTP/1.1
-1 : Host: localhost:8080
-2 : User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:77.0) Gecko/20100101 Firefox/77.0
-3 : Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
-4 : Accept-Language: en-US,en;q=0.5
-5 : Accept-Encoding: gzip, deflate
-6 : Connection: keep-alive
-7 : Upgrade-Insecure-Requests: 1
+GET /home.htm HTTP/1.1
+Host: localhost:8080
+User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:77.0) Gecko/20100101 Firefox/77.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Upgrade-Insecure-Requests: 1
+client ip is : localhost, port number is :8080
+
+home.htm
+/home/ijin/web/SimpleWebServer/html
+type: 0
+
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+
+home.htm
+GET /main.htm HTTP/1.1
+Host: localhost:8080
+User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:77.0) Gecko/20100101 Firefox/77.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Referer: http://localhost:8080/home.htm
+client ip is : localhost, port number is :8080
+
+main.htm
+/home/ijin/web/SimpleWebServer/html
+type: 0
+
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+
+main.htm
+GET /images/05_01.gif HTTP/1.1
+Host: localhost:8080
+User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:77.0) Gecko/20100101 Firefox/77.0
+Accept: image/webp,*/*
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Referer: http://localhost:8080/home.htm
+client ip is : localhost, port number is :8080
+
+images/05_01.gif
+/home/ijin/web/SimpleWebServer/html
+type: 1
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+
+images/05_01.gif
+GET /images/05_02.gif HTTP/1.1
+Host: localhost:8080
+User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:77.0) Gecko/20100101 Firefox/77.0
+Accept: image/webp,*/*
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Referer: http://localhost:8080/home.htm
+client ip is : localhost, port number is :8080
+
+images/05_02.gif
+/home/ijin/web/SimpleWebServer/html
+type: 1
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+
+images/05_02.gif
+GET /images/05_03.gif HTTP/1.1
+Host: localhost:8080
+User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:77.0) Gecko/20100101 Firefox/77.0
+Accept: image/webp,*/*
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Referer: http://localhost:8080/home.htm
+client ip is : localhost, port number is :8080
+
+images/05_03.gif
+/home/ijin/web/SimpleWebServer/html
+type: 1
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+
+images/05_03.gif
+GET /images/05_04.gif HTTP/1.1
+Host: localhost:8080
+User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:77.0) Gecko/20100101 Firefox/77.0
+Accept: image/webp,*/*
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Referer: http://localhost:8080/home.htm
+client ip is : localhost, port number is :8080
+
+images/05_04.gif
+/home/ijin/web/SimpleWebServer/html
+type: 1
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+
+images/05_04.gif
+Shutdown Server5_04.gif HTTP/1.1
+

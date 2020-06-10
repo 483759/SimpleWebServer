@@ -22,7 +22,7 @@ void keycontrol(int sig);
 void *recvGetRequest(void *arg);
 void responseHTTP(int* sock, char* file, int type);
 char* getClientInfo(char* file, char* cli_ip, int* port_num);
-char* openFile(char* file);
+char* openFile(char* file, int* type);
 void saveLogfile(char* cli_ip, char* file, int size);
 
 int main(int argc, char *argv[]){
@@ -127,6 +127,7 @@ void *recvGetRequest(void *arg){
 
 	while(str_len>=0){
 		char* file_name=NULL;
+		int type;
 		if((str_len=recv(*sock, buffer, BUFSIZE, 0))==-1){
 
 			printf("No Receive");
@@ -136,8 +137,8 @@ void *recvGetRequest(void *arg){
 		buffer[str_len]='\0';
 
 		file_name = getClientInfo(buffer, cli_ip, &port_num);
-		//openFile(file_name);
-		responseHTTP(sock, file_name, 0);
+		openFile(file_name, &type);
+		responseHTTP(sock, file_name, type);
 		puts(file_name);
 		fputs(buffer, stdout);
 	}
@@ -157,22 +158,32 @@ void responseHTTP(int* sock, char* file, int type){
 		perror("fp");
 		return;
 	}
-
-	if(type==0){
+printf("type: %d\n",type);
+	if(type==-1){
+		strcpy(respHeader, "HTTP/1.1 404 Not Found\r\n"); 
+		write(*sock, respHeader, strlen(respHeader));
+	}
+	else if(type==0){	//if file is .html
 		puts(respHeader);
-		strcpy(respHeader, "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n"); 
+		strcpy(respHeader, "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Security-Policy: default-src https:\r\n"); 
 		puts(respHeader);
 		write(*sock, respHeader, strlen(respHeader));
 		while(fgets(content, BUFSIZE, fp)){
-			puts(content);
+			//puts(content);
 			write(*sock, content, strlen(content));
 		}
+	}
+	else if(type==1){
+		strcpy(respHeader, "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n"); 
+		puts(respHeader);
+		write(*sock, respHeader, strlen(respHeader));
+
 	}
 
 	fclose(fp);
 }
 
-char* openFile(char* file){
+char* openFile(char* file, int* type){
 	FILE* fp = NULL;
 	char content[BUFSIZE];
 	char buffer[BUFSIZE];
@@ -180,8 +191,18 @@ char* openFile(char* file){
 	fp = fopen(file,"r");
 	if(fp==NULL){
 		fp=fopen("index.html","r");
-		if(fp==NULL)
+		if(fp==NULL){
 			printf("Not found");
+			*type=-1;
+			return NULL;
+		}
+		*type=0;
+		return "index.html";
+	}else
+		*type=0;
+
+	if(strncmp(file+strlen(file)-4, ".gif",4)==0){
+			*type=1;
 	}
 
 	if(strncmp(file,"total.cgi",9)==0){
@@ -222,7 +243,7 @@ char* getClientInfo(char* file, char* cli_ip, int* port_num){
 	}
 
 	saveLogfile(cli_ip, "index.html", 0);
-	printf("client ip is : %s, port number is :%d\n",cli_ip, *port_num);
+	printf("client ip is : %s, port number is :%d\n\n",cli_ip, *port_num);
 	return fptr;
 }
 

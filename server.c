@@ -12,7 +12,7 @@
 
 #define BUFSIZE	   5000
 #define NAMESIZE	20
-#define THREADSIZE  10
+#define THREADSIZE  50
 
 int *ns[THREADSIZE], t_size;
 int sd;
@@ -130,16 +130,17 @@ void *recvGetRequest(void *arg){
 		int type;
 		if((str_len=recv(*sock, buffer, BUFSIZE, 0))==-1){
 
-			printf("No Receive");
+			//printf("No Receive");
 			return (void*) NULL;
 		}
 
 		buffer[str_len]='\0';
-
+		
+		//puts(buffer);
 		file_name = getClientInfo(buffer, cli_ip, &port_num, &type);
 		openFile(file_name, &type);
 		responseHTTP(sock, file_name, type);
-		puts(file_name);
+		//puts(file_name);
 	}
 }
 
@@ -148,10 +149,15 @@ void responseHTTP(int* sock, char* file, int type){
 	char content[BUFSIZE];
 	char respHeader[BUFSIZE];
 	char *dir;
-	
-	if(type==2){
+
+	if(type==-1){
+		strcpy(respHeader, "HTTP/1.1 404 Not Found\r\n"); 
+		write(*sock, respHeader, strlen(respHeader));
+		close(*sock);
+		return;
+	}
+	else if(type==2){
 		char *p = strtok(file, "?=&");
-		char buffer[BUFSIZE];
 		int sum=0, s=0, f=0;
 		while(p!=NULL){
 			if(strcmp(p,"from")==0){
@@ -165,15 +171,16 @@ void responseHTTP(int* sock, char* file, int type){
 		}
 		for(int i=s;i<=f;i++)
 			sum+=i;
-
-		sprintf(buffer, "<body>sum of %d to %d = %d</body>\r\n", s, f, sum);
+		printf("\ntotal\n");
+		sprintf(content, "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">\n<html>\n<head>\n<title>total.cgi\n</title>\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=iso-8859-1\">\n</head>\n<body>\n<h1>sum of %d to %d = %d</h1>\n</body>\n</html>\r\n", s, f, sum);
 
 		strcpy(respHeader, "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n"); 
 		puts(respHeader);
 		write(*sock, respHeader, strlen(respHeader));
 		
-		puts(buffer);
-		write(*sock, buffer, strlen(buffer));
+		puts(content);
+		write(*sock, content, strlen(content));
+		close(*sock);
 		return;
 	}
 
@@ -185,26 +192,23 @@ void responseHTTP(int* sock, char* file, int type){
 		perror("fp");
 		printf("%s\n", file);
 		return;
-	}
-printf("type: %d\n",type);
-	if(type==-1){
-		strcpy(respHeader, "HTTP/1.1 404 Not Found\r\n"); 
-		write(*sock, respHeader, strlen(respHeader));
-	}
+	}	
 	else if(type==0){	//if file is .html
-		puts(respHeader);
 		strcpy(respHeader, "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n"); 
 		puts(respHeader);
 		write(*sock, respHeader, strlen(respHeader));
+				
 		while(fgets(content, BUFSIZE, fp)){
-			//puts(content);
+			puts(content);
 			write(*sock, content, strlen(content));
 		}
+		close(*sock);
 	}
 	else if(type==1){
 		strcpy(respHeader, "HTTP/1.1 200 OK\r\nContent-Type: image/webp; charset=utf-8\r\n"); 
 		puts(respHeader);
 		write(*sock, respHeader, strlen(respHeader));
+		
 		while(fgets(content, BUFSIZE, fp)){
 			//puts(content);
 			write(*sock, content, strlen(content));
@@ -237,6 +241,7 @@ char* openFile(char* file, int* type){
 			return NULL;
 		}
 		*type=0;
+		strcpy(file, "index.html");
 		return "index.html";
 	}else
 		*type=0;
@@ -284,11 +289,11 @@ char* getClientInfo(char* file, char* cli_ip, int* port_num, int* type){
 	p = strtok(NULL, " :,");
 	//printf("Accept: %s\n", p);
 	if(strcmp(p, "image/webp")==0){
-		printf("This is image\n\n");
+		//printf("This is image\n\n");
 		*type = 1;
 	}
 	else if(strcmp(p, "text/html")==0){
-		printf("This is page\n\n");
+		//printf("This is page\n\n");
 		*type = 0;
 	}
 

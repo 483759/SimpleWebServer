@@ -11,11 +11,11 @@
 #include <arpa/inet.h>
 
 #define BUFSIZE	   5000
-#define NAMESIZE	20
 #define THREADSIZE  1000
 
 int *ns[THREADSIZE], t_size;
 int sd;
+char* dir, *svc;
 pthread_mutex_t m_lock;
 
 void keycontrol(int sig);
@@ -27,7 +27,7 @@ void saveLogfile(char* cli_ip, char* file, int size);
 
 int main(int argc, char *argv[]){
 	int n,port_num;
-	char* dir, *cur, buffer[BUFSIZE];
+	char buffer[BUFSIZE];
 	pthread_t tid[THREADSIZE], recv;
 	struct sockaddr_in cli, sin;
 	FILE* log_fp;
@@ -39,14 +39,15 @@ int main(int argc, char *argv[]){
 		exit(1);
 	}
 	
-	dir = (char*)malloc(sizeof(char)*strlen(argv[1]));
+	dir = (char*)malloc(sizeof(char)*BUFSIZE);
+	svc = (char*)malloc(sizeof(char)*BUFSIZE);
 	dir = getcwd(NULL, BUFSIZ);
 	int i;
 	for(i=0;argv[1][i+1]!='\0';i++)
 		argv[1][i]=argv[1][i+1];
 	argv[1][i]='\0';
 	chdir(argv[1]);
-	dir = getcwd(NULL, BUFSIZE);
+	svc = getcwd(NULL, BUFSIZE);
 	port_num = atoi(argv[2]);
 	//save server directory and port num
 
@@ -309,15 +310,21 @@ char* getClientInfo(char* file, char* cli_ip, int* port_num, int* type){
 }
 
 void saveLogfile(char* cli_ip, char* file, int size){
-	FILE* log_fp = fopen("log.txt", "a");
+	FILE* log_fp = NULL;
+	char buffer[BUFSIZE];
 
+	chdir(dir);
+	log_fp = fopen("log.txt", "a");
 	if(log_fp==NULL){
 		perror("log_fp");
 		return;
 	}
 
-	fprintf(log_fp, "%s %s %d\n",cli_ip, file, size);
-	printf("%s %s %d\n",cli_ip, file, size);
+	sprintf(buffer, "%s %s %d\n", cli_ip, file, size);
+	fputs(buffer, log_fp);
+	printf("log: %s %s %d\n",cli_ip, file, size);
+
+	chdir(svc);
 
 	fclose(log_fp);
 	return;

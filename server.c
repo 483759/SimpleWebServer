@@ -129,18 +129,17 @@ void *recvGetRequest(void *arg){
 		char* file_name=NULL;
 		int type;
 		if((str_len=recv(*sock, buffer, BUFSIZE, 0))==-1){
-
 			//printf("No Receive");
 			return (void*) NULL;
 		}
 
 		buffer[str_len]='\0';
 		
-		//puts(buffer);
 		file_name = getClientInfo(buffer, cli_ip, &port_num, &type);
 		openFile(file_name, &type);
 		responseHTTP(sock, file_name, type);
-		//puts(file_name);
+		saveLogfile(cli_ip, file_name, 0);
+		close(*sock);
 	}
 }
 
@@ -149,14 +148,14 @@ void responseHTTP(int* sock, char* file, int type){
 	char content[BUFSIZE];
 	char respHeader[BUFSIZE];
 	char *dir;
+	size_t size=0;
 
-	if(type==-1){
+	if(type==-1){	//if the page isn't exist
 		strcpy(respHeader, "HTTP/1.1 404 Not Found\r\n"); 
 		write(*sock, respHeader, strlen(respHeader));
-		close(*sock);
 		return;
 	}
-	else if(type==2){
+	else if(type==2){	//if link is total.cgi
 		char *p = strtok(file, "?=&");
 		int sum=0, s=0, f=0;
 		while(p!=NULL){
@@ -171,71 +170,77 @@ void responseHTTP(int* sock, char* file, int type){
 		}
 		for(int i=s;i<=f;i++)
 			sum+=i;
-		printf("\ntotal\n");
-		sprintf(content, "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">\n<html>\n<head>\n<title>total.cgi\n</title>\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=iso-8859-1\">\n</head>\n<body>\n<h1>sum of %d to %d = %d</h1>\n</body>\n</html>\r\n", s, f, sum);
 
-		strcpy(respHeader, "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n"); 
+		strcpy(respHeader, "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n\r\n"); 
 		puts(respHeader);
-		write(*sock, respHeader, strlen(respHeader));
+		send(*sock, respHeader, strlen(respHeader),0);
+	
 		
+		sprintf(content, "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">\r\n<html>\r\n<head>\r\n<title>total.cgi</title>\r\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=iso-8859-1\">\r\n</head>\r\n<body>\r\n<h1>sum of %d to %d = %d</h1>\r\n</body>\r\n</html>\r\n", s, f, sum);
 		puts(content);
-		write(*sock, content, strlen(content));
-		close(*sock);
+		send(*sock, content, strlen(content), 0);
+		
 		return;
 	}
 
-	//puts(file);
-	//puts(getcwd(NULL,BUFSIZE));
 	fp = fopen(file, "r");
 
-	if(fp==NULL){
+	if(fp==NULL){	//if the file isn't exist
 		perror("fp");
-		printf("%s\n", file);
 		return;
-	}	
-	else if(type==0){	//if file is .html
-		strcpy(respHeader, "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n"); 
+	}
+
+	fseek(fp, 0, SEEK_END);
+	size = ftell(fp);
+	printf("file size: %d\n",(int)size);
+	fseek(fp, 0, SEEK_SET);
+
+	if(type==0){	//if file is .html
+		strcpy(respHeader, "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n\r\n"); 
 		puts(respHeader);
 		write(*sock, respHeader, strlen(respHeader));
 				
 		while(fgets(content, BUFSIZE, fp)){
-			puts(content);
-			write(*sock, content, strlen(content));
+			//puts(content);
+			send(*sock, content, strlen(content), 0);
 		}
-		close(*sock);
 	}
-	else if(type==1){
+	else if(type==1){	//if the file is image
+		size_t fsize=0, nsize=0;
 		strcpy(respHeader, "HTTP/1.1 200 OK\r\nContent-Type: image/webp; charset=utf-8\r\n"); 
 		puts(respHeader);
 		write(*sock, respHeader, strlen(respHeader));
 		
-		while(fgets(content, BUFSIZE, fp)){
+		while(nsize != size){
+			memset(content, 0x00, sizeof(content));
+			fsize = fread(content, 1, BUFSIZE-1, fp);
+			nsize+= fsize;
 			//puts(content);
-			write(*sock, content, strlen(content));
+			send(*sock, content, fsize, 0);
 		}
-
 
 	}
 	fclose(fp);
 }
 
 char* openFile(char* file, int* type){
+	//Open file and image
+	
 	FILE* fp = NULL;
 	char content[BUFSIZE];
 	char buffer[BUFSIZE];
 	
 	if(strncmp(file,"total.cgi",9)==0){
-		//total cgi 	
-		//printf("total");
+		//If the link is total.cgi -> type = 2
 		*type=2;
 		return NULL;
 	}
 
 
 	fp = fopen(file,"r");
-	if(fp==NULL){
+	if(fp==NULL){	//if the file doesn't exist, open "index.html"
 		fp=fopen("index.html","r");
-		if(fp==NULL){
+		if(fp==NULL){	//if "index.html" doesn't exist, Not found
 			printf("Not found");
 			*type=-1;
 			return NULL;
@@ -246,12 +251,10 @@ char* openFile(char* file, int* type){
 	}else
 		*type=0;
 
-	if(strncmp(file+strlen(file)-4, ".gif",4)==0){
+	if(strncmp(file+strlen(file)-4, ".gif",4)==0
+			||strncmp(file+strlen(file)-4, ".jpg",4)==0){
 			*type=1;
-	}
-
-	
-
+	}	//image file
 	
 	fclose(fp);
 	return NULL; 
@@ -262,6 +265,9 @@ char* getClientInfo(char* file, char* cli_ip, int* port_num, int* type){
 	char *html_file;
 	int index=0,j=0;
 	
+	/*
+	 HTTP Header token
+	 */
 	char* ptr = strtok(file, "\n");
 	while(ptr != NULL){
 		if(index>7)break;
@@ -273,9 +279,13 @@ char* getClientInfo(char* file, char* cli_ip, int* port_num, int* type){
 	}
 
 	char* fptr = strtok(HTTP[0], " ");
+	if(strcmp(fptr,"GET")!=0) {
+		return NULL;
+	}
 	fptr=strtok(NULL," ");
 	fptr++;
 
+	//Host Token(client IP, Port Number)
 	char* p = strtok(HTTP[1]," :");
 	while(p != NULL){
 		if(j>2)break;
@@ -297,8 +307,6 @@ char* getClientInfo(char* file, char* cli_ip, int* port_num, int* type){
 		*type = 0;
 	}
 
-	saveLogfile(cli_ip, "index.html", 0);
-	//printf("client ip is : %s, port number is :%d\n\n",cli_ip, *port_num);
 	return fptr;
 }
 
@@ -311,6 +319,7 @@ void saveLogfile(char* cli_ip, char* file, int size){
 	}
 
 	fprintf(log_fp, "%s %s %d\n",cli_ip, file, size);
+	printf("%s %s %d\n",cli_ip, file, size);
 
 	fclose(log_fp);
 	return;

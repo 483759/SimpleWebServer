@@ -254,21 +254,22 @@ int openFile(char* file){
 			printf("Not found");
 			return -1;
 		}
-		strcpy(file, "index.html");
+		strcpy(file, "index.html");	//overwrite non-existent files with "index.html"
 		return 0;
 	}else
-		type = 0;
+		type = 0;	//type 0 is about html file
 
 	if(strncmp(file+strlen(file)-4, ".gif",4)==0
 			||strncmp(file+strlen(file)-4, ".jpg",4)==0){
 			type=1;
-	}	//image file
+	}	//type 1 is about image file
 	
 	fclose(fp);
 	return type; 
 }
 
 char* getClientInfo(char* file, char* cli_ip, int* port_num, int* type){
+	//After receiving http request, obtain connection ip, port number and connection type
 	char HTTP[11][BUFSIZE];
 	char *html_file;
 	int index=0,j=0;
@@ -292,8 +293,8 @@ char* getClientInfo(char* file, char* cli_ip, int* port_num, int* type){
 	}
 	fptr=strtok(NULL," ");
 	fptr++;
+	//Get the connection URL behind "GET"
 
-	//Host Token(client IP, Port Number)
 	char* p = strtok(HTTP[1]," :");
 	while(p != NULL){
 		if(j>2)break;
@@ -302,38 +303,40 @@ char* getClientInfo(char* file, char* cli_ip, int* port_num, int* type){
 		p=strtok(NULL," :");
 		j++;
 	}
+	//Get the connection IP and port number with "Host"
 
 	p = strtok(HTTP[3], " :,");
 	p = strtok(NULL, " :,");
 	//printf("Accept: %s\n", p);
-	if(strcmp(p, "image/webp")==0){
-		//printf("This is image\n\n");
+	if(strcmp(p, "image/webp")==0)
 		*type = 1;
-	}
-	else if(strcmp(p, "text/html")==0){
-		//printf("This is page\n\n");
+	else if(strcmp(p, "text/html")==0)
 		*type = 0;
-	}
+	//Extract the string behind the accept to distinguish whether the request page is html or image file
+
 
 	return fptr;
 }
 
 void saveLogfile(char* cli_ip, char* file, int size){
+	//Storing server connection logs
 	FILE* log_fp = NULL;
 	char buffer[BUFSIZE];
 
-	chdir(dir);
+	chdir(dir);			// move to the directory where the server program is located
 	log_fp = fopen("log.txt", "a");
 	if(log_fp==NULL){
 		perror("log_fp");
 		return;
 	}
+	//open the "log.txt" files with "a" option(additional)
 
 	sprintf(buffer, "%s %s %d\n", cli_ip, file, size);
 	fputs(buffer, log_fp);
-	printf("log: %s %s %d\n",cli_ip, file, size);
+	//write a log file consisting of client ip, file name and file size
 
 	chdir(svc);
+	//return to service directory
 
 	fclose(log_fp);
 	return;

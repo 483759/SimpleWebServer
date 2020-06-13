@@ -228,6 +228,21 @@ void responseHTTP(int* sock, char* file, size_t* size, int type){
 			send(*sock, content, fsize, 0);
 		}	//Respond by reading the binary file as much as BUFSIZE
 
+	}else if(type==3){		//if the file is compressed
+		size_t fsize=0, nsize=0;
+		sprintf(respHeader, "HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Length: %d\r\nContent-Type: text/html; charset=utf-8\r\n\r\n", (int)*size); 
+		puts(respHeader);
+		write(*sock, respHeader, strlen(respHeader));
+		//In the header, state that the file is compressed in gzip format
+		
+		while(nsize != *size){
+			memset(content, 0x00, sizeof(content));
+			fsize = fread(content, 1, BUFSIZE-1, fp);
+			nsize+= fsize;
+			//puts(content);
+			send(*sock, content, fsize, 0);
+		}	//Respond by reading the binary file as much as BUFSIZE
+
 	}
 	fclose(fp);
 }
@@ -236,8 +251,9 @@ int openFile(char* file){
 	//Open file and image
 	//Read the path of the file to find the type of path
 	
-	FILE* fp = NULL;
+	FILE* fp = NULL, *gz=NULL;
 	char content[BUFSIZE];
+	char gz_file[BUFSIZE];
 	char buffer[BUFSIZE];
 	int type=-1;
 	
@@ -246,6 +262,14 @@ int openFile(char* file){
 		return 2;
 	}
 
+	strcpy(gz_file, file);
+	strcat(gz_file, ".gz");
+	gz = fopen(gz_file, "r");
+	if(gz!=NULL){
+		strcpy(file, gz_file);		
+		fclose(gz);
+		return 3;
+	}
 
 	fp = fopen(file,"r");
 	if(fp==NULL){	//if the file doesn't exist, open "index.html"

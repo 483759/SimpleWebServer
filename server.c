@@ -42,14 +42,9 @@ int main(int argc, char *argv[]){
 	svc = (char*)malloc(sizeof(char)*BUFSIZE);	//service directory(argv[1])
 	dir = getcwd(NULL, BUFSIZ);
 	int i;
-	/*
-	for(i=0;argv[1][i+1]!='\0';i++)
-		argv[1][i]=argv[1][i+1];
-	argv[1][i]='\0';
-	*/
 	chdir(argv[1]);				//move to service dir
 	svc = getcwd(NULL, BUFSIZE);
-	printf("Service Directory = %s\n", svc);
+	//printf("Service Directory = %s\n", svc);
 	port_num = atoi(argv[2]);		//assign port number
 	//save server directory and port num
 
@@ -59,7 +54,7 @@ int main(int argc, char *argv[]){
 	fclose(log_fp);
 	//initialize existing content by opening "log.txt" with "w" option
 
-	printf("server directory = %s\nPort num = %d\n\n",dir,port_num);
+	//printf("server directory = %s\nPort num = %d\n\n",dir,port_num);
 	
 	if((sd = socket(AF_INET, SOCK_STREAM, 0))==-1){
 		perror("socket");
@@ -155,7 +150,6 @@ void responseHTTP(int* sock, char* file, size_t* size, int type){
 	char content[BUFSIZE];
 	char respHeader[BUFSIZE];
 	char *dir;
-	printf("\ntype: %d\n",type);
 
 	if(type==-1){	//if the page isn't exist
 		strcpy(respHeader, "HTTP/1.1 404 Not Found\r\n\r\n"); 
@@ -199,13 +193,13 @@ void responseHTTP(int* sock, char* file, size_t* size, int type){
 
 	fseek(fp, 0, SEEK_END);
 	*size = ftell(fp);
-	printf("file size: %d\n",(int)*size);
+	//printf("file size: %d\n",(int)*size);
 	fseek(fp, 0, SEEK_SET);
 	//calculate file size
 
 	if(type==0){	//if file type is .html
 		strcpy(respHeader, "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n\r\n"); 
-		puts(respHeader);
+		//puts(respHeader);
 		write(*sock, respHeader, strlen(respHeader));
 				
 		while(fgets(content, BUFSIZE, fp)){
@@ -216,7 +210,7 @@ void responseHTTP(int* sock, char* file, size_t* size, int type){
 	else if(type==1){	//if the file is image
 		size_t fsize=0, nsize=0;
 		strcpy(respHeader, "HTTP/1.1 200 OK\r\nContent-Type: image/webp; charset=utf-8\r\n\r\n"); 
-		puts(respHeader);
+		//puts(respHeader);
 		write(*sock, respHeader, strlen(respHeader));
 		//Setting header to image type
 		
@@ -231,7 +225,7 @@ void responseHTTP(int* sock, char* file, size_t* size, int type){
 	}else if(type==3){		//if the file is compressed
 		size_t fsize=0, nsize=0;
 		sprintf(respHeader, "HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Length: %d\r\nContent-Type: text/html; charset=utf-8\r\n\r\n", (int)*size); 
-		puts(respHeader);
+		//puts(respHeader);
 		write(*sock, respHeader, strlen(respHeader));
 		//In the header, state that the file is compressed in gzip format
 		
@@ -283,6 +277,7 @@ int openFile(char* file){
 	}else
 		type = 0;	//type 0 is about html file
 
+	
 	if(strncmp(file+strlen(file)-4, ".gif",4)==0
 			||strncmp(file+strlen(file)-4, ".jpg",4)==0){
 			type=1;
@@ -305,8 +300,7 @@ char* getClientInfo(char* file, char* cli_ip, int* port_num, int* type){
 	while(ptr != NULL){
 		if(index>7)break;
 		strcpy(HTTP[index],ptr);
-		printf("%s\n", HTTP[index]);
-			
+		//printf("%s\n", HTTP[index]);
 		ptr=strtok(NULL,"\n");
 		index++;
 	}
@@ -322,20 +316,21 @@ char* getClientInfo(char* file, char* cli_ip, int* port_num, int* type){
 	char* p = strtok(HTTP[1]," :");
 	while(p != NULL){
 		if(j>2)break;
-		if(j==1)strcpy(cli_ip,p);
-		else if(j==2)*port_num=atoi(p);
+		if(j==1)strcpy(cli_ip,p);	//1st token is client ip
+		else if(j==2)*port_num=atoi(p);		//2nd token is port number
 		p=strtok(NULL," :");
 		j++;
 	}
 	//Get the connection IP and port number with "Host"
 
+	/*
 	p = strtok(HTTP[3], " :,");
 	p = strtok(NULL, " :,");
-	//printf("Accept: %s\n", p);
 	if(strcmp(p, "image/webp")==0)
 		*type = 1;
 	else if(strcmp(p, "text/html")==0)
 		*type = 0;
+		*/
 	//Extract the string behind the accept to distinguish whether the request page is html or image file
 
 
@@ -365,5 +360,3 @@ void saveLogfile(char* cli_ip, char* file, int size){
 	fclose(log_fp);
 	return;
 }
-
-

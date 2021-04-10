@@ -44,7 +44,7 @@ int main(int argc, char *argv[]){
 	int i;
 	chdir(argv[1]);				//move to service dir
 	svc = getcwd(NULL, BUFSIZE);
-	//printf("Service Directory = %s\n", svc);
+	printf("Service Directory = %s\n", svc);
 	port_num = atoi(argv[2]);		//assign port number
 	//save server directory and port num
 
@@ -54,7 +54,7 @@ int main(int argc, char *argv[]){
 	fclose(log_fp);
 	//initialize existing content by opening "log.txt" with "w" option
 
-	//printf("server directory = %s\nPort num = %d\n\n",dir,port_num);
+printf("server directory = %s\nPort num = %d\n\n",dir,port_num);
 	
 	if((sd = socket(AF_INET, SOCK_STREAM, 0))==-1){
 		perror("socket");
@@ -87,22 +87,21 @@ int main(int argc, char *argv[]){
 		ns[t_size]=(int*)malloc(sizeof(int));
 		int		str_len=0;
 
-		pthread_mutex_lock(&m_lock);
 		if((*ns[t_size] = accept(sd,(struct sockaddr *)&cli, &clientlen))==-1){
 			//save newly connected client socket
 			perror("accept");	//connection fail
 			exit(1);
 		}
-		pthread_mutex_unlock(&m_lock);
 
 		pthread_create(&recv, NULL, recvGetRequest, (void*) ns[t_size]);
 		//Call function with creating a thread
 		t_size++;
 	}
 
-	
+	/*
 	for(int i=0;i<t_size;i++)
 		close(*ns[t_size]);
+		*/
 	close(sd);
 	fclose(log_fp);
 	//Close sockets and files
@@ -131,6 +130,7 @@ void *recvGetRequest(void *arg){
 	while(str_len>=0){
 		char* file_name=NULL;
 		int type=-1;
+
 		if((str_len=recv(*sock, buffer, BUFSIZE, 0))==-1)
 			return (void*) NULL;
 		buffer[str_len]='\0';
@@ -138,9 +138,12 @@ void *recvGetRequest(void *arg){
 		
 		file_name = getClientInfo(buffer, cli_ip, &port_num, &type);
 		type = openFile(file_name);
+
+		pthread_mutex_lock(&m_lock);
 		responseHTTP(sock, file_name, &size, type);
 		saveLogfile(cli_ip, file_name, (int)size);
 		close(*sock);
+		pthread_mutex_unlock(&m_lock);
 	}
 }
 
